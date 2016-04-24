@@ -51,13 +51,17 @@ std::vector<std::string> split(const std::string &text, char sep) {
   return tokens;
 }
 
-void imu_res::parse_line(char * buf, size_t pkt_size){
+bool imu_res::parse_line(char * buf, size_t pkt_size){
 	struct imu_data_t imu_data;
 	double  time,  x, y, z;
 	int id;
 	const char * delim = ",";
 	std::string line(buf);
 	std::vector<std::string> elems = split(line,','); 
+
+	if(elems.size() < 5)
+		return false;
+
 	imu_data.timestamp = stof( elems.at(0) );
 	for(int i = 1; i < elems.size();){
 
@@ -87,12 +91,14 @@ void imu_res::parse_line(char * buf, size_t pkt_size){
 		}
 	}
 	this->newdata = imu_data;
+	return true;
 }
 
 bool imu_res::poll_imu(){
 	// get a single packet
 	char buf[256];
 	size_t pkt_size = 0;
+	bool retval = true;
 	socklen_t slen=sizeof(this->cli_addr);
 
 	pkt_size = recvfrom( this->sockfd, buf, BUFLEN-1, 0, (struct sockaddr*)&(this->cli_addr), &slen);
@@ -103,23 +109,32 @@ bool imu_res::poll_imu(){
 	buf[pkt_size] = '\0';
 
 	this->newdata_mtex.lock();
-	this->parse_line(buf,pkt_size);
+	retval = this->parse_line(buf,pkt_size);
 	this->newdata_mtex.unlock();
 	
-	return true;
+	this->valid_data = retval;
+	return retval;
 }
 
 // get the current values
-void imu_res::get_imu_data(struct imu_data_t *dest){
+bool imu_res::get_imu_data(struct imu_data_t *dest){
+	
+	if(! this->valid_data)
+		return false;
+
 	this->newdata_mtex.lock();
 	memcpy(dest, &(this->newdata), sizeof(imu_data_t));	
 	this->newdata_mtex.unlock();
+
+	return true;
 }
 
 // thread function
 static void * imu_loop(void *data){
 	imu_res *imu = (imu_res *)data;
-	while(imu->poll_imu())	{}
+	while(1)	{
+		imu->poll_imu();
+	}
 }
 
 void imu_res::thread_imu(){

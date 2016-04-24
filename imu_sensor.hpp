@@ -32,12 +32,13 @@ class imu_res{
 		pthread_t *imu_thread;
 		std::mutex newdata_mtex;
 		struct imu_data_t newdata;
+		bool valid_data;
 	public:
 		imu_res(int);
-		void parse_line(char * , size_t );
+		bool parse_line(char * , size_t );
 		bool poll_imu();
 		void thread_imu();
-		void get_imu_data(struct imu_data_t *dest);
+		bool get_imu_data(struct imu_data_t *dest);
 };
 
 
