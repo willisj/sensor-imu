@@ -24,8 +24,11 @@ imu_res::imu_res(int port){
 		perror("sock");
 		exit(1);
 	}
-	else 
-		printf("Server : Socket() successful\n");
+
+	this->newdata.timestamp = 0;
+	this->newdata.accel.x = this->newdata.accel.y = this->newdata.accel.z = 0.0;
+	this->newdata.gyro.x = this->newdata.gyro.y = this->newdata.gyro.z = 0.0;
+	this->newdata.mag.x = this->newdata.mag.y = this->newdata.mag.z = 0.0;
 
 	bzero(&(this->my_addr), sizeof(this->my_addr));
 	my_addr.sin_family = AF_INET;
@@ -36,8 +39,6 @@ imu_res::imu_res(int port){
 		perror("bind");
 		exit(1);
 	}
-	else
-		printf("Server : bind() successful\n");
 }
 
 std::vector<std::string> split(const std::string &text, char sep) {
@@ -52,7 +53,6 @@ std::vector<std::string> split(const std::string &text, char sep) {
 }
 
 bool imu_res::parse_line(char * buf, size_t pkt_size){
-	struct imu_data_t imu_data;
 	double  time,  x, y, z;
 	int id;
 	const char * delim = ",";
@@ -62,7 +62,8 @@ bool imu_res::parse_line(char * buf, size_t pkt_size){
 	if(elems.size() < 5)
 		return false;
 
-	imu_data.timestamp = stof( elems.at(0) );
+	this->newdata_mtex.lock();
+	this->newdata.timestamp = stof( elems.at(0) );
 	for(int i = 1; i < elems.size();){
 
 
@@ -74,23 +75,24 @@ bool imu_res::parse_line(char * buf, size_t pkt_size){
 
 		switch( id ){
 			case 3:
-				imu_data.accel.x = x;
-				imu_data.accel.y = y;
-				imu_data.accel.z = z;
+				this->newdata.accel.x = x;
+				this->newdata.accel.y = y;
+				this->newdata.accel.z = z;
 				break;
 			case 4:
-				imu_data.gyro.x = x;
-				imu_data.gyro.y = y;
-				imu_data.gyro.z = z;
+				this->newdata.gyro.x = x;
+				this->newdata.gyro.y = y;
+				this->newdata.gyro.z = z;
 				break;
 			case 5:
-				imu_data.mag.x = x;
-				imu_data.mag.y = y;
-				imu_data.mag.z = z;
+				this->newdata.mag.x = x;
+				this->newdata.mag.y = y;
+				this->newdata.mag.z = z;
 				break;
 		}
 	}
-	this->newdata = imu_data;
+	this->valid_data = true;
+	this->newdata_mtex.unlock();
 	return true;
 }
 
@@ -108,11 +110,8 @@ bool imu_res::poll_imu(){
 	}
 	buf[pkt_size] = '\0';
 
-	this->newdata_mtex.lock();
 	retval = this->parse_line(buf,pkt_size);
-	this->newdata_mtex.unlock();
 	
-	this->valid_data = retval;
 	return retval;
 }
 
