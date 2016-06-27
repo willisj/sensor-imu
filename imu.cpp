@@ -18,7 +18,13 @@ int main(void)
 
     	for (;;) {
 		if(imu.get_imu_data(&newdata))
+			/*
 			printf("%lf: acc: %lf,%lf,%lf\tgyro: %lf,%lf,%lf\tmagnet: %lf,%lf,%lf\n",
+					newdata.timestamp, newdata.accel.x, newdata.accel.y, newdata.accel.z,
+					newdata.gyro.x, newdata.gyro.y, newdata.gyro.z,
+					newdata.mag.x, newdata.mag.y, newdata.mag.z );
+					*/
+			printf("{\"id\":\"acc\",\"x\":%lf,\"y\":%lf,\"z\":%lf}\n {\"id\":\"gyro\",\"x\":%lf,\"y\":%lf,\"z\":%lf}\n{\"id\":\"mag\", \"x\":%lf,\"y\":%lf,\"z\":%lf}\n",
 					newdata.timestamp, newdata.accel.x, newdata.accel.y, newdata.accel.z,
 					newdata.gyro.x, newdata.gyro.y, newdata.gyro.z,
 					newdata.mag.x, newdata.mag.y, newdata.mag.z );
