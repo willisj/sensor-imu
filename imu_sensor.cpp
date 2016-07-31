@@ -123,6 +123,7 @@ bool imu_res::get_imu_data(struct imu_data_t *dest){
 
 	this->newdata_mtex.lock();
 	memcpy(dest, &(this->newdata), sizeof(imu_data_t));	
+	this->valid_data = false;
 	this->newdata_mtex.unlock();
 
 	return true;
